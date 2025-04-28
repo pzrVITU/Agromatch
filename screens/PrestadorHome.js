@@ -1,50 +1,470 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  TouchableOpacity,
+  ImageBackground,
+  Modal,
+  Pressable,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PrestadorHome = ({ navigation }) => {
+export default function PrestadorHome() {
+  const [abaAtiva, setAbaAtiva] = useState('listagem');
+  const [titulo, setTitulo] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [valor, setValor] = useState('');
+  const [servicos, setServicos] = useState([]);
+  const [servicosSolicitados, setServicosSolicitados] = useState([
+    { nome: 'Aragem do Solo', cliente: 'Fazenda São Jorge', status: 'Pendente' },
+    { nome: 'Plantio de Milho', cliente: 'Sítio Primavera', status: 'Aceito' },
+  ]);
+
+  const [carregando, setCarregando] = useState(false);
+
+  const [erroTitulo, setErroTitulo] = useState('');
+  const [erroDescricao, setErroDescricao] = useState('');
+
+  const [modalVisivel, setModalVisivel] = useState(false);
+  const [servicoSelecionado, setServicoSelecionado] = useState(null);
+
+  useEffect(() => {
+    carregarServicosPrestador();
+  }, []);
+
+  const carregarServicosPrestador = async () => {
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        console.error('ID do usuário não encontrado');
+        return;
+      }
+
+      const response = await fetch(`http://192.168.1.111:5000/api/servicos?prestadorId=${userId}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setServicos(data);
+      } else {
+        console.error('Erro ao carregar serviços:', data);
+      }
+    } catch (error) {
+      console.error('Erro na conexão:', error);
+    }
+  };
+
+  const handlePostarServico = async () => {
+    setErroTitulo('');
+    setErroDescricao('');
+
+    if (!titulo.trim()) {
+      setErroTitulo('Título é obrigatório.');
+    }
+    if (!descricao.trim()) {
+      setErroDescricao('Descrição é obrigatória.');
+    }
+    if (!titulo.trim() || !descricao.trim()) {
+      return;
+    }
+
+    setCarregando(true);
+
+    try {
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        console.error('ID do usuário não encontrado');
+        setCarregando(false);
+        return;
+      }
+
+      const response = await fetch('http://192.168.1.111:5000/api/servicos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: titulo,
+          descricao,
+          valor: valor || 'A combinar',
+          prestadorId: userId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Serviço cadastrado com sucesso:', data);
+        setTitulo('');
+        setDescricao('');
+        setValor('');
+        carregarServicosPrestador();
+      } else {
+        console.error('Erro ao cadastrar serviço:', data);
+      }
+    } catch (error) {
+      console.error('Erro de conexão:', error);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const formatarValor = (valor) => {
+    if (!valor || valor.toLowerCase() === 'a combinar') {
+      return 'A combinar';
+    }
+    const num = parseFloat(valor);
+    if (isNaN(num)) return valor;
+    return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const abreModalServico = (servico) => {
+    setServicoSelecionado(servico);
+    setModalVisivel(true);
+  };
+
+  const descricaoResumo = (texto, limite = 60) => {
+    if (!texto) return '';
+    if (texto.length <= limite) return texto;
+    return texto.substring(0, limite).trim() + '...';
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Bem-vindo, Prestador de Serviços!</Text>
-      <Text style={styles.subtitle}>Aqui você poderá gerenciar seus anúncios e contratos.</Text>
+      <Text style={styles.title}>Serviços</Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.goBack()}
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color="#6B7B7B" style={{ marginLeft: 10 }} />
+        <TextInput
+          placeholder="Busque serviços especializados"
+          placeholderTextColor="#6B7B7B"
+          style={styles.searchInput}
+        />
+      </View>
+
+      <View style={styles.tabContainer}>
+        <TouchableOpacity onPress={() => setAbaAtiva('listagem')} style={styles.tab}>
+          <Text style={abaAtiva === 'listagem' ? styles.tabTextActive : styles.tabTextInactive}>
+            Serviços Listados
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAbaAtiva('cadastro')} style={styles.tab}>
+          <Text style={abaAtiva === 'cadastro' ? styles.tabTextActive : styles.tabTextInactive}>
+            Cadastrar Serviço
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setAbaAtiva('solicitados')} style={styles.tab}>
+          <Text style={abaAtiva === 'solicitados' ? styles.tabTextActive : styles.tabTextInactive}>
+            Solicitados
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {abaAtiva === 'listagem' ? (
+        <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 20 }}>
+          {servicos.map((servico, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.cardWrapper}
+              activeOpacity={0.8}
+              onPress={() => abreModalServico(servico)}
+            >
+              <ImageBackground
+                source={require('../assets/background.png')}
+                style={styles.cardBackground}
+                imageStyle={{ borderRadius: 12 }}
+              >
+                <View style={styles.overlay}>
+                  <View style={styles.cardHeader}>
+                    <Icon name="leaf-outline" size={18} color="#fff" />
+                    <Text style={styles.cardTitle}>{servico.nome}</Text>
+                    <View style={styles.valorContainer}>
+                      <Text style={styles.valorText}>{formatarValor(servico.valor)}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardDetails}>
+                    <Icon name="chatbox-ellipses-outline" size={14} color="#fff" />
+                    <Text style={styles.cardText}>{descricaoResumo(servico.descricao)}</Text>
+                  </View>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : abaAtiva === 'cadastro' ? (
+        <View style={styles.formContainer}>
+          <TextInput
+            placeholder="Título do serviço"
+            placeholderTextColor="#666"
+            style={styles.input}
+            value={titulo}
+            onChangeText={text => {
+              setTitulo(text);
+              if (erroTitulo) setErroTitulo('');
+            }}
+          />
+          {!!erroTitulo && <Text style={styles.erroTexto}>{erroTitulo}</Text>}
+
+          <TextInput
+            placeholder="Descrição do serviço"
+            placeholderTextColor="#666"
+            style={[styles.input, { height: 100 }]}
+            multiline
+            value={descricao}
+            onChangeText={text => {
+              setDescricao(text);
+              if (erroDescricao) setErroDescricao('');
+            }}
+          />
+          {!!erroDescricao && <Text style={styles.erroTexto}>{erroDescricao}</Text>}
+
+          <TextInput
+            placeholder="Valor (opcional)"
+            placeholderTextColor="#666"
+            style={styles.input}
+            value={valor}
+            onChangeText={setValor}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity
+            style={[styles.postButton, carregando && { opacity: 0.7 }]}
+            onPress={handlePostarServico}
+            disabled={carregando}
+          >
+            <Text style={styles.postButtonText}>
+              {carregando ? 'Cadastrando...' : 'Postar Serviço'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 20 }}>
+          {servicosSolicitados.map((solicitado, index) => (
+            <View key={index} style={styles.cardWrapper}>
+              <ImageBackground
+                source={require('../assets/background.png')}
+                style={styles.cardBackground}
+                imageStyle={{ borderRadius: 12 }}
+              >
+                <View style={styles.overlay}>
+                  <View style={styles.cardHeader}>
+                    <Icon name="briefcase-outline" size={18} color="#fff" />
+                    <Text style={styles.cardTitle}>{solicitado.nome}</Text>
+                  </View>
+                  <View style={styles.cardDetails}>
+                    <Icon name="person-outline" size={14} color="#fff" />
+                    <Text style={styles.cardText}>Cliente: {solicitado.cliente}</Text>
+                  </View>
+                  <View style={styles.cardDetails}>
+                    <Icon name="information-circle-outline" size={14} color="#fff" />
+                    <Text style={styles.cardText}>Status: {solicitado.status}</Text>
+                  </View>
+                </View>
+              </ImageBackground>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Modal para detalhes do serviço */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisivel}
+        onRequestClose={() => setModalVisivel(false)}
       >
-        <Text style={styles.buttonText}>Sair</Text>
-      </TouchableOpacity>
+        <View style={styles.modalFundo}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitulo}>{servicoSelecionado?.nome}</Text>
+            <Text style={styles.modalDescricao}>{servicoSelecionado?.descricao}</Text>
+            <Text style={styles.modalValor}>Valor: {formatarValor(servicoSelecionado?.valor)}</Text>
+
+            <Pressable
+              style={styles.botaoFechar}
+              onPress={() => setModalVisivel(false)}
+            >
+              <Text style={styles.textoBotaoFechar}>Fechar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-};
-
-export default PrestadorHome;
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F6E6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 20,
+    paddingTop: 50,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#4A7306',
-    marginBottom: 10,
+    color: '#2F2F2F',
+    marginBottom: 15,
   },
-  subtitle: {
-    fontSize: 18,
-    color: '#444',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  button: {
-    backgroundColor: '#899E3D',
-    padding: 15,
+  searchContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#D6E6E3',
     borderRadius: 10,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    height: 45,
+    marginBottom: 20,
   },
-  buttonText: {
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#333',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    justifyContent: 'space-around',
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  tabTextInactive: {
+    color: '#666',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  tabTextActive: {
+    color: '#899E3D',
+    fontWeight: '700',
+    fontSize: 14,
+    borderBottomWidth: 2,
+    borderColor: '#899E3D',
+    paddingBottom: 4,
+  },
+  scrollView: {
+    marginTop: 10,
+  },
+  cardWrapper: {
+    marginBottom: 15,
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  cardBackground: {
+    height: 100,
+    justifyContent: 'flex-end',
+    width: '100%',
+  },
+  overlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    padding: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  cardTitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+    flex: 1,
+  },
+  valorContainer: {
+    marginLeft: 10,
+    backgroundColor: '#899E3D',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  valorText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  cardDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 6,
+    flexShrink: 1,
+  },
+  formContainer: {
+    marginTop: 10,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  postButton: {
+    backgroundColor: '#899E3D',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  postButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  erroTexto: {
+    color: 'red',
+    marginBottom: 10,
+    marginLeft: 2,
+  },
+
+  // Modal styles
+  modalFundo: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitulo: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalDescricao: {
+    fontSize: 16,
+    marginBottom: 15,
+    textAlign: 'justify',
+  },
+  modalValor: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  botaoFechar: {
+    backgroundColor: '#899E3D',
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 8,
+  },
+  textoBotaoFechar: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,

@@ -1,49 +1,65 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [error, setError] = useState('');
 
+ 
   const handleLogin = async () => {
     setError('');
-
+  
     if (!email || !senha) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
-
+  
     try {
-      const response = await fetch('http://192.168.1.111:5000/api/auth/login', {
+      const response = await fetch('http://192.168.1.111:5000/api/usuarios/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha }),
       });
-
-      const data = await response.json();
-
-      if (response.ok && data.user) {
-        const { tipo } = data.user;
-
-        if (tipo === 'cliente') {
-          navigation.navigate('ClienteHome');
-        } else if (tipo === 'prestador') {
-          navigation.navigate('PrestadorHome');
+  
+      const text = await response.text();
+      
+      try {
+        const data = JSON.parse(text);
+        
+        if (response.ok && data.user) {
+          const { tipo, _id } = data.user; // PEGAR O ID
+          const token = data.token; // Se seu backend mandar token também
+  
+          // Salva no AsyncStorage
+          await AsyncStorage.setItem('userId', _id);
+          if (token) {
+            await AsyncStorage.setItem('userToken', token);
+          }
+  
+          if (tipo === 'cliente') {
+            navigation.navigate('ClienteHome');
+          } else if (tipo === 'prestador') {
+            navigation.navigate('PrestadorHome');
+          } else {
+            setError('Tipo de usuário não reconhecido.');
+          }
         } else {
-          setError('Tipo de usuário não reconhecido.');
+          setError(data.message || 'Email ou senha incorretos.');
         }
-      } else {
-        setError(data.message || 'Email ou senha incorretos.');
+  
+      } catch (e) {
+        console.error('Resposta não é JSON:', text);
+        setError('Erro inesperado do servidor.');
       }
     } catch (error) {
       console.error(error);
       setError('Erro ao conectar com o servidor.');
     }
   };
+  
 
   return (
     <View style={styles.container}>
