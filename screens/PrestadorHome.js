@@ -36,17 +36,93 @@ export default function PrestadorHome() {
     carregarServicosPrestador();
   }, []);
 
+  const handleAtualizarServico = async () => {
+    if (!servicoSelecionado) return;
+  
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.error('Token de autenticação não encontrado');
+        return;
+      }
+  
+      const response = await fetch(`http://192.168.1.111:5000/api/servicos/${servicoSelecionado._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nome: servicoSelecionado.nome,
+          descricao: servicoSelecionado.descricao,
+          valor: servicoSelecionado.valor,
+        }),
+      });
+  
+      if (response.ok) {
+        console.log('Serviço atualizado com sucesso');
+        carregarServicosPrestador();
+        setModalVisivel(false);
+      } else {
+        const data = await response.json();
+        console.error('Erro ao atualizar serviço:', data);
+      }
+    } catch (error) {
+      console.error('Erro na atualização:', error);
+    }
+  };
+  
+  const handleDeletarServico = async () => {
+    if (!servicoSelecionado) return;
+  
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.error('Token de autenticação não encontrado');
+        return;
+      }
+  
+      const response = await fetch(`http://192.168.1.111:5000/api/servicos/${servicoSelecionado._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+  
+      if (response.ok) {
+        console.log('Serviço deletado com sucesso');
+        carregarServicosPrestador();
+        setModalVisivel(false);
+      } else {
+        const data = await response.json();
+        console.error('Erro ao deletar serviço:', data);
+      }
+    } catch (error) {
+      console.error('Erro na exclusão:', error);
+    }
+  };
+  
+
   const carregarServicosPrestador = async () => {
     try {
       const userId = await AsyncStorage.getItem('userId');
-      if (!userId) {
-        console.error('ID do usuário não encontrado');
+      const token = await AsyncStorage.getItem('userToken');  // Obter o token de autenticação
+  
+      if (!userId || !token) {
+        console.error('ID do usuário ou token não encontrado');
         return;
       }
-
-      const response = await fetch(`http://192.168.1.111:5000/api/servicos?prestadorId=${userId}`);
+  
+      const response = await fetch(`http://192.168.1.111:5000/api/servicos?prestadorId=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,  // Adicionar o token no cabeçalho
+        },
+      });
+  
       const data = await response.json();
-
+  
       if (response.ok) {
         setServicos(data);
       } else {
@@ -266,28 +342,45 @@ export default function PrestadorHome() {
         </ScrollView>
       )}
 
-      {/* Modal para detalhes do serviço */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisivel}
-        onRequestClose={() => setModalVisivel(false)}
-      >
-        <View style={styles.modalFundo}>
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitulo}>{servicoSelecionado?.nome}</Text>
-            <Text style={styles.modalDescricao}>{servicoSelecionado?.descricao}</Text>
-            <Text style={styles.modalValor}>Valor: {formatarValor(servicoSelecionado?.valor)}</Text>
+<Modal
+  animationType="slide"
+  transparent={true}
+  visible={modalVisivel}
+  onRequestClose={() => setModalVisivel(false)}
+>
+<View style={styles.modalFundo}>
+  <View style={styles.modalContainer}>
+    <Text style={styles.modalTitulo}>{servicoSelecionado?.nome}</Text>
+    <Text style={styles.modalDescricao}>{servicoSelecionado?.descricao}</Text>
+    <Text style={styles.modalValor}>Valor: {formatarValor(servicoSelecionado?.valor)}</Text>
 
-            <Pressable
-              style={styles.botaoFechar}
-              onPress={() => setModalVisivel(false)}
-            >
-              <Text style={styles.textoBotaoFechar}>Fechar</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+    <View style={styles.containerBotoesModal}>
+      <TouchableOpacity
+        style={[styles.botaoModal, { backgroundColor: '#6DBF97' }]} // verde suave
+        onPress={handleAtualizarServico}
+      >
+        <Text style={styles.textoBotaoModal}>Atualizar</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.botaoModal, { backgroundColor: '#E57373' }]} // vermelho suave
+        onPress={handleDeletarServico}
+      >
+        <Text style={styles.textoBotaoModal}>Excluir</Text>
+      </TouchableOpacity>
+    </View>
+
+    <TouchableOpacity
+      style={styles.botaoFecharModal}
+      onPress={() => setModalVisivel(false)}
+    >
+      <Text style={styles.textoBotaoFecharModal}>Fechar</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+</Modal>
+
     </View>
   );
 }
@@ -469,4 +562,45 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
+  botaoModal: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  textoBotaoModal: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  botaoFecharModal: {
+    marginTop: 15,
+    backgroundColor: '#777',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  textoBotaoFecharModal: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  containerBotoesModal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 10, // funciona no React Native 0.71+, senão use marginRight no primeiro botão
+  },
+  botaoModal: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  textoBotaoModal: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  
+  
 });
