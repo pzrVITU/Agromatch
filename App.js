@@ -12,6 +12,7 @@ import PrestadorHome from './screens/PrestadorHome';
 // Novas telas adicionadas
 import ServicoDetalhado from './screens/ServicoDetalhado';
 import PerfilUsuario from './screens/PerfilUsuario';
+import SolicitadosPrestador from './screens/SolicitadosPrestador';
 
 const Stack = createNativeStackNavigator();
 
@@ -54,13 +55,16 @@ export default function App() {
            name="ServicoDetalhado"
            component={ServicoDetalhado}
            options={{ headerShown: false }}
-/>
-
-
+        />
         <Stack.Screen
           name="PerfilUsuario"
           component={PerfilUsuario}
           options={{ title: 'Meu Perfil' }}
+        />
+        <Stack.Screen
+          name="SolicitadosPrestador"
+          component={SolicitadosPrestador}
+          options={{ title: 'Solicitações Recebidas' }}
         />
 
       </Stack.Navigator>

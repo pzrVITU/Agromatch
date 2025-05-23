@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
 
 export default function PrestadorHome() {
+  const navigation = useNavigation();
   const [abaAtiva, setAbaAtiva] = useState('listagem');
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -230,11 +232,14 @@ export default function PrestadorHome() {
             Cadastrar Serviço
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setAbaAtiva('solicitados')} style={styles.tab}>
-          <Text style={abaAtiva === 'solicitados' ? styles.tabTextActive : styles.tabTextInactive}>
-            Solicitados
-          </Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('SolicitadosPrestador')}
+        style={styles.tab}
+      >
+        <Text style={abaAtiva === 'solicitados' ? styles.tabTextActive : styles.tabTextInactive}>
+          Solicitados
+        </Text>
+      </TouchableOpacity>
       </View>
 
       {abaAtiva === 'listagem' ? (

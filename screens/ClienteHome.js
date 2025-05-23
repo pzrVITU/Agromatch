@@ -13,12 +13,12 @@ import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function ClienteHome({ navigation }) {
   const [servicos, setServicos] = useState([]);
-  const [solicitacoes, setSolicitacoes] = useState([]); // Novos serviços solicitados
+  const [solicitacoes, setSolicitacoes] = useState([]);
   const [erro, setErro] = useState('');
   const [buscaNome, setBuscaNome] = useState('');
   const [valorMin, setValorMin] = useState('');
   const [valorMax, setValorMax] = useState('');
-  const [tabAtiva, setTabAtiva] = useState('disponiveis'); // 'disponiveis' ou 'solicitados'
+  const [tabAtiva, setTabAtiva] = useState('disponiveis');
 
   useEffect(() => {
     carregarServicos();
@@ -42,7 +42,6 @@ export default function ClienteHome({ navigation }) {
       });
 
       const data = await response.json();
-
       if (response.ok) {
         setServicos(data);
       } else {
@@ -70,7 +69,6 @@ export default function ClienteHome({ navigation }) {
       });
 
       const data = await response.json();
-
       if (response.ok) {
         setSolicitacoes(data);
       } else {
@@ -82,7 +80,7 @@ export default function ClienteHome({ navigation }) {
   };
 
   const formatarValor = (valor) => {
-    if (!valor || valor.toLowerCase() === 'a combinar') {
+    if (!valor || valor.toLowerCase?.() === 'a combinar') {
       return 'A combinar';
     }
     const num = parseFloat(valor);
@@ -106,7 +104,6 @@ export default function ClienteHome({ navigation }) {
     });
   };
 
-  // Renderiza serviços solicitados
   const renderSolicitacoes = () => {
     if (solicitacoes.length === 0) {
       return <Text style={styles.textoVazio}>Você ainda não solicitou nenhum serviço.</Text>;
@@ -114,6 +111,8 @@ export default function ClienteHome({ navigation }) {
 
     return solicitacoes.map((solicitacao, index) => {
       const servico = solicitacao.servicoId;
+      if (!servico || !servico.nome) return null;
+
       return (
         <TouchableOpacity
           key={index}
@@ -146,7 +145,6 @@ export default function ClienteHome({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Cabeçalho */}
       <View style={styles.header}>
         <Text style={styles.title}>
           {tabAtiva === 'disponiveis' ? 'Serviços Disponíveis' : 'Serviços Solicitados'}
@@ -156,7 +154,6 @@ export default function ClienteHome({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
           style={[styles.tabButton, tabAtiva === 'disponiveis' && styles.tabAtiva]}
@@ -176,12 +173,10 @@ export default function ClienteHome({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* Conteúdo da aba */}
       {erro ? <Text style={styles.error}>{erro}</Text> : null}
 
       {tabAtiva === 'disponiveis' ? (
         <>
-          {/* Filtros */}
           <View style={styles.filtros}>
             <TextInput
               style={styles.input}
@@ -207,10 +202,7 @@ export default function ClienteHome({ navigation }) {
             </View>
           </View>
 
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          >
+          <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 20 }}>
             {filtrarServicos().map((servico, index) => (
               <TouchableOpacity
                 key={index}
@@ -241,10 +233,7 @@ export default function ClienteHome({ navigation }) {
           </ScrollView>
         </>
       ) : (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        >
+        <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 20 }}>
           {renderSolicitacoes()}
         </ScrollView>
       )}
@@ -256,7 +245,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 40,
     backgroundColor: '#f9f9f9',
   },
   header: {
@@ -280,6 +269,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#ddd',
+    flex: 1,
   },
   valorWrapper: {
     flexDirection: 'row',
@@ -311,68 +301,62 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     color: '#fff',
-flex: 1,
-marginLeft: 8,
-fontWeight: 'bold',
-},
-valorContainer: {
-backgroundColor: '#25A59A',
-paddingHorizontal: 10,
-paddingVertical: 4,
-borderRadius: 8,
-},
-valorText: {
-color: '#fff',
-fontWeight: 'bold',
-},
-cardDetails: {
-flexDirection: 'row',
-alignItems: 'center',
-marginTop: 8,
-},
-cardText: {
-color: '#fff',
-marginLeft: 6,
-flex: 1,
-},
-error: {
-color: 'red',
-marginBottom: 10,
-},
-tabs: {
-flexDirection: 'row',
-marginBottom: 12,
-borderBottomWidth: 1,
-borderBottomColor: '#ddd',
-},
-tabButton: {
-flex: 1,
-paddingVertical: 8,
-alignItems: 'center',
-borderBottomWidth: 3,
-borderBottomColor: 'transparent',
-},
-tabAtiva: {
-borderBottomColor: '#25A59A',
-},
-tabTexto: {
-color: '#777',
-fontWeight: '600',
-},
-tabTextoAtivo: {
-color: '#25A59A',
-fontWeight: 'bold',
-},
-container: {
-  flex: 1,
-  paddingHorizontal: 16,
-  paddingTop: 40, // antes era 20, aumente conforme necessário
-  backgroundColor: '#f9f9f9',
-},
-textoVazio: {
-textAlign: 'center',
-color: '#666',
-marginTop: 20,
-fontSize: 16,
-},
+    flex: 1,
+    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  valorContainer: {
+    backgroundColor: '#25A59A',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  valorText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  cardDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cardText: {
+    color: '#fff',
+    marginLeft: 6,
+    flex: 1,
+  },
+  error: {
+    color: 'red',
+    marginBottom: 10,
+  },
+  tabs: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabAtiva: {
+    borderBottomColor: '#25A59A',
+  },
+  tabTexto: {
+    color: '#777',
+    fontWeight: '600',
+  },
+  tabTextoAtivo: {
+    color: '#25A59A',
+    fontWeight: 'bold',
+  },
+  textoVazio: {
+    textAlign: 'center',
+    color: '#666',
+    marginTop: 20,
+    fontSize: 16,
+  },
 });
