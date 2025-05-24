@@ -27,10 +27,8 @@ export default function PrestadorHome() {
   ]);
 
   const [carregando, setCarregando] = useState(false);
-
   const [erroTitulo, setErroTitulo] = useState('');
   const [erroDescricao, setErroDescricao] = useState('');
-
   const [modalVisivel, setModalVisivel] = useState(false);
   const [servicoSelecionado, setServicoSelecionado] = useState(null);
 
@@ -40,14 +38,14 @@ export default function PrestadorHome() {
 
   const handleAtualizarServico = async () => {
     if (!servicoSelecionado) return;
-  
+
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
         console.error('Token de autenticação não encontrado');
         return;
       }
-  
+
       const response = await fetch(`http://192.168.1.111:5000/api/servicos/${servicoSelecionado._id}`, {
         method: 'PUT',
         headers: {
@@ -60,7 +58,7 @@ export default function PrestadorHome() {
           valor: servicoSelecionado.valor,
         }),
       });
-  
+
       if (response.ok) {
         console.log('Serviço atualizado com sucesso');
         carregarServicosPrestador();
@@ -73,24 +71,24 @@ export default function PrestadorHome() {
       console.error('Erro na atualização:', error);
     }
   };
-  
+
   const handleDeletarServico = async () => {
     if (!servicoSelecionado) return;
-  
+
     try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
         console.error('Token de autenticação não encontrado');
         return;
       }
-  
+
       const response = await fetch(`http://192.168.1.111:5000/api/servicos/${servicoSelecionado._id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-  
+
       if (response.ok) {
         console.log('Serviço deletado com sucesso');
         carregarServicosPrestador();
@@ -103,28 +101,27 @@ export default function PrestadorHome() {
       console.error('Erro na exclusão:', error);
     }
   };
-  
 
   const carregarServicosPrestador = async () => {
     try {
       const userId = await AsyncStorage.getItem('userId');
-      const token = await AsyncStorage.getItem('userToken');  // Obter o token de autenticação
-  
+      const token = await AsyncStorage.getItem('userToken');
+
       if (!userId || !token) {
         console.error('ID do usuário ou token não encontrado');
         return;
       }
-  
+
       const response = await fetch(`http://192.168.1.111:5000/api/servicos?prestadorId=${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,  // Adicionar o token no cabeçalho
+          'Authorization': `Bearer ${token}`,
         },
       });
-  
+
       const data = await response.json();
-  
+
       if (response.ok) {
         setServicos(data);
       } else {
@@ -210,7 +207,12 @@ export default function PrestadorHome() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Serviços</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Serviços</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('PerfilUsuario')}>
+          <Icon name="person-circle-outline" size={32} color="#333" />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.searchContainer}>
         <Icon name="search" size={20} color="#6B7B7B" style={{ marginLeft: 10 }} />
@@ -221,25 +223,35 @@ export default function PrestadorHome() {
         />
       </View>
 
-      <View style={styles.tabContainer}>
-        <TouchableOpacity onPress={() => setAbaAtiva('listagem')} style={styles.tab}>
-          <Text style={abaAtiva === 'listagem' ? styles.tabTextActive : styles.tabTextInactive}>
-            Serviços Listados
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setAbaAtiva('cadastro')} style={styles.tab}>
-          <Text style={abaAtiva === 'cadastro' ? styles.tabTextActive : styles.tabTextInactive}>
-            Cadastrar Serviço
-          </Text>
-        </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => navigation.navigate('SolicitadosPrestador')}
-        style={styles.tab}
-      >
-        <Text style={abaAtiva === 'solicitados' ? styles.tabTextActive : styles.tabTextInactive}>
-          Solicitados
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.tabsContainer}>
+        <View style={styles.tabs}>
+          <TouchableOpacity
+            style={[styles.tabButton, abaAtiva === 'listagem' && styles.tabAtiva]}
+            onPress={() => setAbaAtiva('listagem')}
+          >
+            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.tabTexto}>
+              Listados
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, abaAtiva === 'cadastro' && styles.tabAtiva]}
+            onPress={() => setAbaAtiva('cadastro')}
+          >
+            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.tabTexto}>
+              Cadastrados
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, abaAtiva === 'solicitados' && styles.tabAtiva]}
+            onPress={() => navigation.navigate('SolicitadosPrestador')}
+          >
+            <Text numberOfLines={1} adjustsFontSizeToFit style={styles.tabTexto}>
+              Solicitações
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {abaAtiva === 'listagem' ? (
@@ -347,45 +359,43 @@ export default function PrestadorHome() {
         </ScrollView>
       )}
 
-<Modal
-  animationType="slide"
-  transparent={true}
-  visible={modalVisivel}
-  onRequestClose={() => setModalVisivel(false)}
->
-<View style={styles.modalFundo}>
-  <View style={styles.modalContainer}>
-    <Text style={styles.modalTitulo}>{servicoSelecionado?.nome}</Text>
-    <Text style={styles.modalDescricao}>{servicoSelecionado?.descricao}</Text>
-    <Text style={styles.modalValor}>Valor: {formatarValor(servicoSelecionado?.valor)}</Text>
-
-    <View style={styles.containerBotoesModal}>
-      <TouchableOpacity
-        style={[styles.botaoModal, { backgroundColor: '#6DBF97' }]} // verde suave
-        onPress={handleAtualizarServico}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisivel}
+        onRequestClose={() => setModalVisivel(false)}
       >
-        <Text style={styles.textoBotaoModal}>Atualizar</Text>
-      </TouchableOpacity>
+        <View style={styles.modalFundo}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitulo}>{servicoSelecionado?.nome}</Text>
+            <Text style={styles.modalDescricao}>{servicoSelecionado?.descricao}</Text>
+            <Text style={styles.modalValor}>Valor: {formatarValor(servicoSelecionado?.valor)}</Text>
 
-      <TouchableOpacity
-        style={[styles.botaoModal, { backgroundColor: '#E57373' }]} // vermelho suave
-        onPress={handleDeletarServico}
-      >
-        <Text style={styles.textoBotaoModal}>Excluir</Text>
-      </TouchableOpacity>
-    </View>
+            <View style={styles.containerBotoesModal}>
+              <TouchableOpacity
+                style={[styles.botaoModal, { backgroundColor: '#6DBF97' }]}
+                onPress={handleAtualizarServico}
+              >
+                <Text style={styles.textoBotaoModal}>Atualizar</Text>
+              </TouchableOpacity>
 
-    <TouchableOpacity
-      style={styles.botaoFecharModal}
-      onPress={() => setModalVisivel(false)}
-    >
-      <Text style={styles.textoBotaoFecharModal}>Fechar</Text>
-    </TouchableOpacity>
-  </View>
-</View>
+              <TouchableOpacity
+                style={[styles.botaoModal, { backgroundColor: '#E57373' }]}
+                onPress={handleDeletarServico}
+              >
+                <Text style={styles.textoBotaoModal}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
 
-</Modal>
-
+            <TouchableOpacity
+              style={styles.botaoFecharModal}
+              onPress={() => setModalVisivel(false)}
+            >
+              <Text style={styles.textoBotaoFecharModal}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -397,11 +407,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 50,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2F2F2F',
-    marginBottom: 15,
+    flex: 1,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -418,27 +434,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
-  tabContainer: {
+  tabs: {
     flexDirection: 'row',
-    marginBottom: 10,
-    justifyContent: 'space-around',
+    marginBottom: 15,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#7B9E3D',
+
   },
-  tab: {
+  tabButton: {
     flex: 1,
+    paddingVertical: 10,  // Reduzido de 10
+    paddingHorizontal: 4,  // Reduzido de 10
+    backgroundColor: '#E6E6E6',
     alignItems: 'center',
+    minWidth: 0,  // Importante para evitar corte
+    maxWidth: '95%',
   },
-  tabTextInactive: {
-    color: '#666',
+  tabTexto: {
+    fontSize: 15,  // Reduzido de 14/16
     fontWeight: '600',
-    fontSize: 14,
+    color: '#555',
+    includeFontPadding: false,  // Remove espaçamento extra da fonte
+    textAlign: 'center',
   },
-  tabTextActive: {
-    color: '#899E3D',
-    fontWeight: '700',
-    fontSize: 14,
-    borderBottomWidth: 2,
-    borderColor: '#899E3D',
-    paddingBottom: 4,
+  tabAtiva: {
+    backgroundColor: '#7B9E3D',
+  },
+  tabTextoAtivo: {
+    color: '#fff',
   },
   scrollView: {
     marginTop: 10,
@@ -525,8 +550,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 2,
   },
-
-  // Modal styles
   modalFundo: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -556,27 +579,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 20,
   },
-  botaoFechar: {
-    backgroundColor: '#899E3D',
-    paddingVertical: 10,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-  },
-  textoBotaoFechar: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  containerBotoesModal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 10,
   },
   botaoModal: {
-    marginTop: 10,
-    padding: 12,
+    flex: 1,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   textoBotaoModal: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
   },
   botaoFecharModal: {
     marginTop: 15,
@@ -590,22 +607,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
-  containerBotoesModal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    gap: 10, // funciona no React Native 0.71+, senão use marginRight no primeiro botão
-  },
-  botaoModal: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  textoBotaoModal: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  
-  
 });

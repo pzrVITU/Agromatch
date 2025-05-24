@@ -11,27 +11,50 @@ export default function PerfilUsuario() {
   }, []);
 
   const carregarDados = async () => {
-    const userData = await AsyncStorage.getItem('userData');
-    const userServicos = await AsyncStorage.getItem('userServicos'); // ou calcular via API
-    if (userData) {
-      setUsuario(JSON.parse(userData));
-    }
-    if (userServicos) {
-      const lista = JSON.parse(userServicos);
-      setTotalServicos(lista.length || 0);
-    }
-  };
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    const userId = await AsyncStorage.getItem('userId');
+
+    if (!token || !userId) return;
+
+    // Busca dados do usuário
+    const usuarioResponse = await fetch(`http://192.168.1.111:5000/api/usuarios/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!usuarioResponse.ok) throw new Error('Erro ao buscar usuário');
+    const dadosUsuario = await usuarioResponse.json();
+
+    // Busca contagem de serviços
+    const servicosResponse = await fetch(`http://192.168.1.111:5000/api/usuarios/servicos-count/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!servicosResponse.ok) throw new Error('Erro ao buscar serviços');
+    const { count } = await servicosResponse.json();
+
+    setUsuario(dadosUsuario);
+    setTotalServicos(count);
+  } catch (error) {
+    console.error('Erro ao carregar dados do perfil:', error);
+  }
+};
+
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Meu Perfil</Text>
       <Text style={styles.label}>Nome:</Text>
-      <Text style={styles.value}>{usuario.nome}</Text>
+      <Text style={styles.value}>{usuario.nome || 'Carregando...'}</Text>
 
       <Text style={styles.label}>Email:</Text>
-      <Text style={styles.value}>{usuario.email}</Text>
+      <Text style={styles.value}>{usuario.email || 'Carregando...'}</Text>
 
-      <Text style={styles.label}>Total de Serviços Contratados:</Text>
+      <Text style={styles.label}>Total de Serviços Publicados:</Text>
       <Text style={styles.value}>{totalServicos}</Text>
 
       <TouchableOpacity style={styles.button}>

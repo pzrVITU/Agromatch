@@ -1,4 +1,4 @@
-import { Image } from 'react-native';
+import { Image } from 'react-native'; 
 import logoFolha from '../assets/logo-folha.png';
 import iconeTrigo from '../assets/icone-trigo.png';
 import React, { useState } from 'react';
@@ -13,13 +13,16 @@ import {
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { TextInputMask } from 'react-native-masked-text';
+import { Picker } from '@react-native-picker/picker';
 
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
   const [usuario, setUsuario] = useState('');
   const [senha, setSenha] = useState('');
   const [documento, setDocumento] = useState('');
+  const [documentoTipo, setDocumentoTipo] = useState('cpf');
   const [tipoUsuario, setTipoUsuario] = useState(null);
   const [errors, setErrors] = useState({});
 
@@ -28,18 +31,22 @@ export default function RegisterScreen({ navigation }) {
 
     if (!nome.trim().includes(' ')) newErrors.nome = 'Informe nome e sobrenome.';
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) newErrors.email = 'Email inválido.';
+    if (!telefone || telefone.replace(/\D/g, '').length < 10) newErrors.telefone = 'Telefone inválido.';
     if (!usuario.trim()) newErrors.usuario = 'Nome de usuário obrigatório.';
     if (senha.length < 6) newErrors.senha = 'A senha deve ter no mínimo 6 caracteres.';
 
-    if (tipoUsuario === 'cliente') {
-      const cpfClean = documento.replace(/\D/g, '');
-      if (cpfClean.length !== 11) newErrors.documento = 'CPF inválido.';
+    const docClean = documento.replace(/\D/g, '');
+
+    if (!documento.trim()) {
+      newErrors.documento = 'Documento obrigatório.';
+    } else {
+      if (documentoTipo === 'cpf' && docClean.length !== 11)
+        newErrors.documento = 'CPF inválido.';
+      if (documentoTipo === 'cnpj' && docClean.length !== 14)
+        newErrors.documento = 'CNPJ inválido.';
     }
 
-    if (tipoUsuario === 'prestador') {
-      const cnpjClean = documento.replace(/\D/g, '');
-      if (cnpjClean.length !== 14) newErrors.documento = 'CNPJ inválido.';
-    }
+    if (!tipoUsuario) newErrors.tipoUsuario = 'Selecione o tipo de usuário.';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -51,11 +58,12 @@ export default function RegisterScreen({ navigation }) {
     const payload = {
       nome,
       email,
+      telefone,
       usuario,
       senha,
       tipo: tipoUsuario,
-      cpf: tipoUsuario === 'cliente' ? documento : null,
-      cnpj: tipoUsuario === 'prestador' ? documento : null,
+      cpf: documentoTipo === 'cpf' ? documento : null,
+      cnpj: documentoTipo === 'cnpj' ? documento : null,
     };
 
     try {
@@ -91,7 +99,7 @@ export default function RegisterScreen({ navigation }) {
         <Text style={styles.subtitle}>Vamos criar seu cadastro.</Text>
 
         {/* Nome */}
-        <Text style={styles.label}>Nome</Text>
+        <Text style={[styles.label, styles.labelLeft]}>Nome</Text>
         <View style={styles.inputContainer}>
           <FontAwesome name="user" size={20} color="#333" style={styles.icon} />
           <TextInput
@@ -105,7 +113,7 @@ export default function RegisterScreen({ navigation }) {
         {errors.nome && <Text style={styles.errorText}>{errors.nome}</Text>}
 
         {/* Email */}
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, styles.labelLeft]}>Email</Text>
         <View style={styles.inputContainer}>
           <FontAwesome name="at" size={20} color="#333" style={styles.icon} />
           <TextInput
@@ -119,13 +127,34 @@ export default function RegisterScreen({ navigation }) {
         </View>
         {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
+        {/* Telefone */}
+        <Text style={[styles.label, styles.labelLeft]}>Telefone</Text>
+        <View style={styles.inputContainer}>
+          <FontAwesome name="phone" size={20} color="#333" style={styles.icon} />
+          <TextInputMask
+            style={styles.input}
+            type={'cel-phone'}
+            options={{
+              maskType: 'BRL',
+              withDDD: true,
+              dddMask: '(99) ',
+            }}
+            placeholder="(99) 99999-9999"
+            placeholderTextColor="#333"
+            keyboardType="phone-pad"
+            value={telefone}
+            onChangeText={setTelefone}
+          />
+        </View>
+        {errors.telefone && <Text style={styles.errorText}>{errors.telefone}</Text>}
+
         {/* Usuário */}
-        <Text style={styles.label}>Usuário</Text>
+        <Text style={[styles.label, styles.labelLeft]}>Usuário</Text>
         <View style={styles.inputContainer}>
           <FontAwesome name="user-circle" size={20} color="#333" style={styles.icon} />
           <TextInput
             style={styles.input}
-            placeholder="Usuario"
+            placeholder="Usuário"
             placeholderTextColor="#333"
             value={usuario}
             onChangeText={setUsuario}
@@ -134,7 +163,7 @@ export default function RegisterScreen({ navigation }) {
         {errors.usuario && <Text style={styles.errorText}>{errors.usuario}</Text>}
 
         {/* Senha */}
-        <Text style={styles.label}>Senha</Text>
+        <Text style={[styles.label, styles.labelLeft]}>Senha</Text>
         <View style={styles.inputContainer}>
           <FontAwesome name="lock" size={20} color="#333" style={styles.icon} />
           <TextInput
@@ -148,42 +177,57 @@ export default function RegisterScreen({ navigation }) {
         </View>
         {errors.senha && <Text style={styles.errorText}>{errors.senha}</Text>}
 
-        {/* CPF ou CNPJ */}
-        {tipoUsuario && (
-          <>
-            <Text style={styles.label}>{tipoUsuario === 'cliente' ? 'CPF' : 'CNPJ'}</Text>
-            <View style={styles.inputContainer}>
-              <FontAwesome
-                name={tipoUsuario === 'cliente' ? 'id-card' : 'building'}
-                size={20}
-                color="#333"
-                style={styles.icon}
-              />
-              <TextInputMask
-                style={styles.input}
-                type={tipoUsuario === 'cliente' ? 'cpf' : 'cnpj'}
-                placeholder={tipoUsuario === 'cliente' ? '000.000.000-00' : '00.000.000/0000-00'}
-                placeholderTextColor="#333"
-                keyboardType="numeric"
-                value={documento}
-                onChangeText={setDocumento}
-              />
-            </View>
-            {errors.documento && <Text style={styles.errorText}>{errors.documento}</Text>}
-          </>
-        )}
+        {/* Documento */}
+        <View style={styles.centeredGroup}>
+          <Text style={[styles.label, styles.labelCenter]}>Documento</Text>
+          <View style={styles.radioOptionRow}>
+            <TouchableOpacity onPress={() => setDocumentoTipo('cpf')} style={styles.radioRow}>
+              <View style={[styles.radioCircle, documentoTipo === 'cpf' && styles.selected]} />
+              <Text style={styles.radioLabel}>CPF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setDocumentoTipo('cnpj')} style={styles.radioRow}>
+              <View style={[styles.radioCircle, documentoTipo === 'cnpj' && styles.selected]} />
+              <Text style={styles.radioLabel}>CNPJ</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.inputContainer}>
+          <FontAwesome
+            name={documentoTipo === 'cpf' ? 'id-card' : 'building'}
+            size={20}
+            color="#333"
+            style={styles.icon}
+          />
+          <TextInputMask
+            style={styles.input}
+            type={documentoTipo}
+            placeholder={documentoTipo === 'cpf' ? '000.000.000-00' : '00.000.000/0000-00'}
+            placeholderTextColor="#333"
+            keyboardType="numeric"
+            value={documento}
+            onChangeText={setDocumento}
+          />
+        </View>
+        {errors.documento && <Text style={styles.errorText}>{errors.documento}</Text>}
 
         {/* Tipo de usuário */}
-        <View style={styles.radioGroup}>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setTipoUsuario('prestador')}>
-            <View style={[styles.radioCircle, tipoUsuario === 'prestador' && styles.selected]} />
-            <Text style={styles.radioLabel}>Prestador de serviço</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.radioOption} onPress={() => setTipoUsuario('cliente')}>
-            <View style={[styles.radioCircle, tipoUsuario === 'cliente' && styles.selected]} />
-            <Text style={styles.radioLabel}>Cliente</Text>
-          </TouchableOpacity>
+        <View style={styles.centeredGroup}>
+          <Text style={[styles.label, { alignSelf: 'flex-start' }]}>Tipo de usuário</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={tipoUsuario}
+              onValueChange={(itemValue) => setTipoUsuario(itemValue)}
+              style={styles.picker}
+              dropdownIconColor="#fff"
+              mode="dropdown"
+            >
+              <Picker.Item label="Selecione o tipo de usuário" value={null} color="#999" />
+              <Picker.Item label="Prestador de serviço" value="prestador" />
+              <Picker.Item label="Cliente" value="cliente" />
+            </Picker>
+          </View>
+          {errors.tipoUsuario && <Text style={styles.errorText}>{errors.tipoUsuario}</Text>}
         </View>
 
         {/* Botões */}
@@ -221,7 +265,13 @@ const styles = StyleSheet.create({
   label: {
     color: '#fff',
     fontSize: 16,
-    marginTop: 15,
+    marginTop: 10,
+  },
+  labelLeft: {
+    alignSelf: 'flex-start',
+  },
+  labelCenter: {
+    alignSelf: 'center',
   },
   inputContainer: {
     backgroundColor: '#E9F8F9',
@@ -230,6 +280,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 10,
     marginTop: 8,
+    alignSelf: 'center',
+    width: '100%',
   },
   icon: {
     marginRight: 8,
@@ -238,15 +290,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     color: '#000',
-  },
-  radioGroup: {
-    marginTop: 30,
-    marginBottom: 20,
-  },
-  radioOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   radioCircle: {
     width: 18,
@@ -269,6 +312,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
     marginBottom: 20,
+    marginTop: 20,
   },
   buttonText: {
     color: '#899E3A',
@@ -281,6 +325,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  pickerContainer: {
+  backgroundColor: '#E9F8F9',
+  borderRadius: 12,
+  marginTop: 8,
+  width: '100%',
+  justifyContent: 'center',
+},
+picker: {
+  color: '#333',
+  height: 54,
+  width: '100%',
+},
   logoContainer: {
     alignItems: 'center',
     marginBottom: 10,
@@ -304,9 +360,29 @@ const styles = StyleSheet.create({
     tintColor: '#FFFFFF',
   },
   errorText: {
-    color: 'red',
-    fontSize: 14,
-    marginTop: 4,
-    marginLeft: 5,
+    color: '#ff4444',
+    marginTop: 3,
+    marginBottom: 3,
+    alignSelf: 'flex-start',
+    fontWeight: '600',
+  },
+  centeredGroup: {
+    marginTop: 0,
+    alignItems: 'center',
+  },
+  radioOptionRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  radioRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
   },
 });

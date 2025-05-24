@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react'; 
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -70,6 +71,29 @@ export default function ServicoDetalhado({ route, navigation }) {
     }
   };
 
+  const abrirWhatsApp = () => {
+    if (!servico || !servico.prestadorId || !servico.prestadorId.telefone) {
+      Alert.alert('Erro', 'Telefone do prestador não disponível');
+      return;
+    }
+
+    // Limpa o telefone, deixa só números para o link funcionar corretamente
+    const telefoneLimpo = servico.prestadorId.telefone.replace(/\D/g, '');
+
+    // Link para abrir o WhatsApp
+    const url = `whatsapp://send?phone=55${telefoneLimpo}`;
+
+    Linking.canOpenURL(url)
+      .then(supported => {
+        if (!supported) {
+          Alert.alert('Erro', 'WhatsApp não está instalado no dispositivo');
+        } else {
+          return Linking.openURL(url);
+        }
+      })
+      .catch(err => Alert.alert('Erro', 'Erro ao tentar abrir o WhatsApp'));
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -103,6 +127,20 @@ export default function ServicoDetalhado({ route, navigation }) {
                   currency: 'BRL',
                 })}
           </Text>
+
+          {servico.prestadorId && (
+            <>
+              <Text style={styles.label}>Prestador:</Text>
+              <Text style={styles.text}>{servico.prestadorId.nome}</Text>
+
+              <Text style={styles.label}>Telefone:</Text>
+              <Text style={styles.text}>{servico.prestadorId.telefone}</Text>
+
+              <TouchableOpacity style={styles.whatsappButton} onPress={abrirWhatsApp}>
+                <Text style={styles.buttonText}>Contato via WhatsApp</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           <TouchableOpacity style={styles.button} onPress={contratarServico}>
             <Text style={styles.buttonText}>Contratar Serviço</Text>
@@ -157,6 +195,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  whatsappButton: {
+    marginTop: 20,
+    backgroundColor: '#25D366',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#25D366',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   buttonText: {
     color: '#fff',
