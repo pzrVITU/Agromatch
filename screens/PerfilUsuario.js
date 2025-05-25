@@ -1,53 +1,102 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function PerfilUsuario() {
   const [usuario, setUsuario] = useState({});
   const [totalServicos, setTotalServicos] = useState(0);
+  const [imagemPerfil, setImagemPerfil] = useState(null); // Armazena a imagem escolhida
 
   useEffect(() => {
     carregarDados();
   }, []);
 
   const carregarDados = async () => {
-  try {
-    const token = await AsyncStorage.getItem('userToken');
-    const userId = await AsyncStorage.getItem('userId');
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const userId = await AsyncStorage.getItem('userId');
 
-    if (!token || !userId) return;
+      if (!token || !userId) return;
 
-    // Busca dados do usuário
-    const usuarioResponse = await fetch(`http://192.168.1.111:5000/api/usuarios/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      const usuarioResponse = await fetch(`http://192.168.1.111:5000/api/usuarios/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!usuarioResponse.ok) throw new Error('Erro ao buscar usuário');
+      const dadosUsuario = await usuarioResponse.json();
+
+      const servicosResponse = await fetch(`http://192.168.1.111:5000/api/usuarios/servicos-count/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!servicosResponse.ok) throw new Error('Erro ao buscar serviços');
+      const { count } = await servicosResponse.json();
+
+      setUsuario(dadosUsuario);
+      setTotalServicos(count);
+    } catch (error) {
+      console.error('Erro ao carregar dados do perfil:', error);
+    }
+  };
+
+  const escolherImagem = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão negada', 'É necessário permitir acesso à galeria.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 1,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
 
-    if (!usuarioResponse.ok) throw new Error('Erro ao buscar usuário');
-    const dadosUsuario = await usuarioResponse.json();
+    if (!result.canceled) {
+      setImagemPerfil(result.assets[0].uri);
+    }
+  };
 
-    // Busca contagem de serviços
-    const servicosResponse = await fetch(`http://192.168.1.111:5000/api/usuarios/servicos-count/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+  const tirarFoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão negada', 'É necessário permitir acesso à câmera.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
     });
 
-    if (!servicosResponse.ok) throw new Error('Erro ao buscar serviços');
-    const { count } = await servicosResponse.json();
-
-    setUsuario(dadosUsuario);
-    setTotalServicos(count);
-  } catch (error) {
-    console.error('Erro ao carregar dados do perfil:', error);
-  }
-};
-
+    if (!result.canceled) {
+      setImagemPerfil(result.assets[0].uri);
+    }
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Meu Perfil</Text>
+
+      <TouchableOpacity onPress={escolherImagem}>
+        <Image
+          source={imagemPerfil ? { uri: imagemPerfil } : require('../assets/placeholder.png')}
+          style={styles.avatar}
+        />
+        <Text style={styles.link}>Escolher da Galeria</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={tirarFoto}>
+        <Text style={styles.link}>Tirar Foto</Text>
+      </TouchableOpacity>
+
       <Text style={styles.label}>Nome:</Text>
       <Text style={styles.value}>{usuario.nome || 'Carregando...'}</Text>
 
@@ -96,5 +145,18 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignSelf: 'center',
+    marginBottom: 10,
+    backgroundColor: '#eee',
+  },
+  link: {
+    color: '#1E90FF',
+    textAlign: 'center',
+    marginTop: 6,
   },
 });

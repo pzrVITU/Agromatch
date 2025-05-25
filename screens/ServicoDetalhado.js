@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'; 
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   Platform,
   StatusBar,
   Linking,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -19,6 +21,8 @@ export default function ServicoDetalhado({ route, navigation }) {
   const [servico, setServico] = useState(null);
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(true);
+  const [comentario, setComentario] = useState('');
+  const [avaliacoes, setAvaliacoes] = useState([]);
 
   useEffect(() => {
     buscarDetalhesDoServico();
@@ -36,6 +40,7 @@ export default function ServicoDetalhado({ route, navigation }) {
       const data = await response.json();
       if (response.ok) {
         setServico(data);
+        setAvaliacoes(data.avaliacoes || []);
       } else {
         setErro(data.message || 'Erro ao buscar serviço');
       }
@@ -43,6 +48,36 @@ export default function ServicoDetalhado({ route, navigation }) {
       setErro('Erro de conexão: ' + err.message);
     } finally {
       setCarregando(false);
+    }
+  };
+
+  const adicionarComentario = async () => {
+    if (!comentario.trim()) {
+      Alert.alert('Aviso', 'Por favor, escreva um comentário antes de enviar.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`http://192.168.1.111:5000/api/avaliacoes/${servicoId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ comentario }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        Alert.alert('Sucesso', 'Comentário adicionado com sucesso!');
+        setComentario('');
+        setAvaliacoes(prev => [...prev, { clienteId: { nome: 'Você' }, comentario }]);
+      } else {
+        Alert.alert('Erro', data.message || 'Erro ao adicionar comentário.');
+      }
+    } catch (err) {
+      Alert.alert('Erro de conexão', err.message);
     }
   };
 
@@ -77,10 +112,7 @@ export default function ServicoDetalhado({ route, navigation }) {
       return;
     }
 
-    // Limpa o telefone, deixa só números para o link funcionar corretamente
     const telefoneLimpo = servico.prestadorId.telefone.replace(/\D/g, '');
-
-    // Link para abrir o WhatsApp
     const url = `whatsapp://send?phone=55${telefoneLimpo}`;
 
     Linking.canOpenURL(url)
@@ -91,7 +123,7 @@ export default function ServicoDetalhado({ route, navigation }) {
           return Linking.openURL(url);
         }
       })
-      .catch(err => Alert.alert('Erro', 'Erro ao tentar abrir o WhatsApp'));
+      .catch(() => Alert.alert('Erro', 'Erro ao tentar abrir o WhatsApp'));
   };
 
   return (
@@ -111,7 +143,7 @@ export default function ServicoDetalhado({ route, navigation }) {
       ) : erro ? (
         <Text style={styles.erro}>{erro}</Text>
       ) : servico ? (
-        <>
+        <ScrollView showsVerticalScrollIndicator={false}>
           <Text style={styles.label}>Nome:</Text>
           <Text style={styles.text}>{servico.nome}</Text>
 
@@ -142,10 +174,35 @@ export default function ServicoDetalhado({ route, navigation }) {
             </>
           )}
 
+          <Text style={styles.label}>Comentários:</Text>
+          {avaliacoes.length === 0 ? (
+            <Text style={{ color: '#555', marginTop: 5 }}>Nenhum comentário ainda.</Text>
+          ) : (
+            avaliacoes.map((avaliacao, index) => (
+              <View key={index} style={styles.avaliacaoContainer}>
+                <Text style={styles.avaliacaoNome}>{avaliacao.clienteId?.nome || 'Usuário'}</Text>
+                <Text style={styles.avaliacaoComentario}>{avaliacao.comentario}</Text>
+              </View>
+            ))
+          )}
+
+          <Text style={styles.label}>Deixe um comentário:</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Escreva seu comentário aqui"
+            value={comentario}
+            onChangeText={setComentario}
+            multiline
+            numberOfLines={4}
+          />
+          <TouchableOpacity style={styles.commentButton} onPress={adicionarComentario}>
+            <Text style={styles.buttonText}>Enviar Comentário</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.button} onPress={contratarServico}>
             <Text style={styles.buttonText}>Contratar Serviço</Text>
           </TouchableOpacity>
-        </>
+        </ScrollView>
       ) : null}
     </SafeAreaView>
   );
@@ -184,6 +241,15 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 22,
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    textAlignVertical: 'top',
+    color: '#333',
+  },
   button: {
     marginTop: 40,
     backgroundColor: '#28a745',
@@ -195,6 +261,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  commentButton: {
+    marginTop: 15,
+    backgroundColor: '#3498db',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#2980b9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   whatsappButton: {
     marginTop: 20,
@@ -218,5 +296,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 20,
     textAlign: 'center',
+  },
+  avaliacaoContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  avaliacaoNome: {
+    fontWeight: 'bold',
+    color: '#28a745',
+  },
+  avaliacaoComentario: {
+    marginTop: 4,
+    color: '#333',
   },
 });
